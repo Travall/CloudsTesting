@@ -33,7 +33,7 @@ public class Main implements ApplicationListener {
 		camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		camera.near = 0.1f;
 		camera.far = 500f;
-		camera.translate(new Vector3(-5.5f,0,-5.5f));
+		camera.translate(new Vector3(100 * 0.113636364f,0,100 * 0.113636364f));
 
 		clouds = new Clouds();
 
@@ -51,8 +51,6 @@ public class Main implements ApplicationListener {
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 		cameraController.update();
 		camera.update();
-
-		System.out.println(camera.position);
 
 		clouds.render(camera);
 	}
