@@ -33,7 +33,7 @@ public class Main implements ApplicationListener {
 		camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		camera.near = 0.1f;
 		camera.far = 500f;
-		camera.translate(new Vector3(100 * 0.113636364f,0,100 * 0.113636364f));
+		camera.translate(new Vector3(Clouds.CLOUD_ROW * 0.113636364f,0,Clouds.CLOUD_ROW * 0.113636364f));
 
 		clouds = new Clouds();
 

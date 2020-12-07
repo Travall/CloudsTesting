@@ -5,12 +5,9 @@ import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g3d.utils.MeshBuilder;
 import com.badlogic.gdx.graphics.g3d.utils.shapebuilders.SphereShapeBuilder;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
-import com.badlogic.gdx.graphics.glutils.VertexBufferObject;
-import com.badlogic.gdx.math.Matrix4;
-import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.Disposable;
+import com.travall.clouds.noise.FastNoiseOctaves;
 import com.travall.clouds.noise.OpenSimplexOctaves;
 
 import java.nio.FloatBuffer;
@@ -25,12 +22,10 @@ public class Clouds implements Disposable
 
 	private ShaderProgram shader;
 	private Mesh sphere;
-	private final PerspectiveCamera cloudCamera = new PerspectiveCamera();
-	private Vector3 position = new Vector3(0,0,0);
 
-	private final static int CLOUD_ROW = 100;
+	public final static int CLOUD_ROW = 200;
 	private final static int CLOUD_COUNT = CLOUD_ROW * CLOUD_ROW;
-	OpenSimplexOctaves noise = new OpenSimplexOctaves(5,0.45,new Random());
+	FastNoiseOctaves noise = new FastNoiseOctaves(4,0.5,new Random());
 
 	float offsetX = 0;
 	float offsetY = 0;
@@ -40,53 +35,49 @@ public class Clouds implements Disposable
 
 		this.shader = new ShaderProgram(files.internal("Shaders/clouds.vert"), files.internal("Shaders/clouds.frag"));
 		shader.bind();
-		cloudCamera.near = 0.1f;
-		cloudCamera.far = 1000;
 
 		MeshBuilder build = new MeshBuilder();
 		build.begin(VertexAttributes.Usage.Position, GL20.GL_TRIANGLES);
-		SphereShapeBuilder.build(build, 3f, 3f, 3f, 32, 32);
+		SphereShapeBuilder.build(build, 3f, 3f, 3f, 24, 16);
 		sphere = build.end();
 
-		sphere.enableInstancedRendering(true, CLOUD_COUNT, new VertexAttribute(VertexAttributes.Usage.Position, 3, "i_offset"),new VertexAttribute(VertexAttributes.Usage.Generic, 1, "i_scale"));
+		sphere.enableInstancedRendering(true, CLOUD_COUNT, new VertexAttribute(VertexAttributes.Usage.Position, 2, "i_offset"),new VertexAttribute(VertexAttributes.Usage.Generic, 1, "i_scale"));
 //		mesh.disableInstancedRendering();
 	}
 
+	FloatBuffer offsets = BufferUtils.newFloatBuffer(CLOUD_COUNT * 3);
+	float[] temp = new float[3];
+	
 	public void render(PerspectiveCamera camera) {
 
-		FloatBuffer offsets = BufferUtils.newFloatBuffer(CLOUD_COUNT * 4);
+		offsets.clear();
+		
 		for (int x = 1; x <= CLOUD_ROW; x++) {
 			for (int y = 1; y <= CLOUD_ROW; y++) {
-				float height = (float)noise.getNoise(x + offsetX,y + offsetY,offsetTime) * 2;
+				float height = (noise.getNoise((x * 0.3f) + offsetX, (y * 0.3f) + offsetY, offsetTime)+0.03f) * 2.5f;
 				if(height < 0.01) height = 0;
-				offsets.put(new float[] {
-						x,0,y, height});
+				
+				temp[0] = x;
+				temp[1] = y;
+				temp[2] = height;
+				
+				offsets.put(temp);
 			}
 		}
 
-		offsets.position(0);
+		offsets.flip();
 		sphere.setInstanceData(offsets);
 //
 		gl.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		gl.glEnable(GL30.GL_BLEND);
-		intsCloudCam(camera);
 		shader.bind();
 		shader.setUniformMatrix("u_projTrans", camera.combined);
 
 		sphere.render(shader, GL20.GL_TRIANGLES);
 
-		offsetX+= 0.05;
-		offsetY+= 0.05;
-		offsetTime+= 0.05;
-	}
-
-	private void intsCloudCam(PerspectiveCamera camera) {
-		cloudCamera.direction.set(camera.direction);
-		cloudCamera.up.set(camera.up);
-		cloudCamera.fieldOfView = camera.fieldOfView;
-		cloudCamera.viewportWidth = camera.viewportWidth;
-		cloudCamera.viewportHeight = camera.viewportHeight;
-		cloudCamera.update(false);
+		offsetX += 0.02f;
+		offsetY += 0.02f;
+		offsetTime += 0.02f;
 	}
 
 	@SuppressWarnings("unused")
