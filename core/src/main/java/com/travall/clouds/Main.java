@@ -35,7 +35,7 @@ public class Main extends ApplicationAdapter {
 		gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 		//cameraController.update();
 		//camera.update();
-		
+    
 		clouds.render(camera);
 	}
 
