@@ -1,95 +1,93 @@
 package com.travall.clouds.tools;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.*;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Mesh;
+import com.badlogic.gdx.graphics.PerspectiveCamera;
+import com.badlogic.gdx.graphics.VertexAttribute;
+import com.badlogic.gdx.graphics.VertexAttributes;
+import com.badlogic.gdx.graphics.VertexAttributes.Usage;
 import com.badlogic.gdx.graphics.g3d.utils.MeshBuilder;
 import com.badlogic.gdx.graphics.g3d.utils.shapebuilders.SphereShapeBuilder;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.Disposable;
-import com.travall.clouds.noise.FastNoiseOctaves;
-import com.travall.clouds.noise.OpenSimplexOctaves;
 
 import java.nio.FloatBuffer;
-import java.util.Random;
 
 import static com.badlogic.gdx.Gdx.files;
 import static com.badlogic.gdx.Gdx.gl;
-import static com.badlogic.gdx.graphics.GL20.*;
 
 public class Clouds implements Disposable
 {
-
-	private ShaderProgram shader;
-	private Mesh sphere;
-
-	public final static int CLOUD_ROW = 200;
+	public final static int CLOUD_ROW = 512;
+	
 	private final static int CLOUD_COUNT = CLOUD_ROW * CLOUD_ROW;
-	FastNoiseOctaves noise = new FastNoiseOctaves(4,0.5,new Random());
+	private final static float OFFSET = 0.5f;
+	private final static float SHIFT = 0.1f;
+	private final static float SIZE = 2.0f;
 
-	float offsetX = 0;
-	float offsetY = 0;
-	float offsetTime = 0;
+	private final ShaderProgram shader;
+	private final Mesh sphere;
+	private final NoiseGPU gpu;
+
+	private float offsetX = 0;
+	private float offsetY = 0;
 
 	public Clouds() {
 
-		this.shader = new ShaderProgram(files.internal("Shaders/clouds.vert"), files.internal("Shaders/clouds.frag"));
+		shader = new ShaderProgram(files.internal("Shaders/clouds.vert"), files.internal("Shaders/clouds.frag"));
 		shader.bind();
 
-		MeshBuilder build = new MeshBuilder();
-		build.begin(VertexAttributes.Usage.Position, GL20.GL_TRIANGLES);
-		SphereShapeBuilder.build(build, 3f, 3f, 3f, 24, 16);
+		final MeshBuilder build = new MeshBuilder();
+		build.begin(Usage.Position, GL20.GL_TRIANGLES);
+		SphereShapeBuilder.build(build, 3f, 3f, 3f, 8, 6);
 		sphere = build.end();
+		
+		gpu = new NoiseGPU();
 
-		sphere.enableInstancedRendering(true, CLOUD_COUNT, new VertexAttribute(VertexAttributes.Usage.Position, 2, "i_offset"),new VertexAttribute(VertexAttributes.Usage.Generic, 1, "i_scale"));
-//		mesh.disableInstancedRendering();
+		sphere.enableInstancedRendering(true, CLOUD_COUNT, new VertexAttribute(VertexAttributes.Usage.Position, 2, "offset"));
 	}
 
-	FloatBuffer offsets = BufferUtils.newFloatBuffer(CLOUD_COUNT * 3);
-	float[] temp = new float[3];
+	FloatBuffer offsets = BufferUtils.newFloatBuffer(CLOUD_COUNT * 2);
+	float[] temp = new float[2];
 	
 	public void render(PerspectiveCamera camera) {
-
-		offsets.clear();
 		
-		for (int x = 1; x <= CLOUD_ROW; x++) {
-			for (int y = 1; y <= CLOUD_ROW; y++) {
-				float height = (noise.getNoise((x * 0.3f) + offsetX, (y * 0.3f) + offsetY, offsetTime)+0.03f) * 2.5f;
-				if(height < 0.01) height = 0;
-				
-				temp[0] = x;
-				temp[1] = y;
-				temp[2] = height;
-				
+		gpu.noise(OFFSET);
+		offsets.clear();
+		for (int x = 0; x < CLOUD_ROW; x++) {
+			for (int y = 0; y < CLOUD_ROW; y++) {
+				temp[0] = x * OFFSET;
+				temp[1] = y * OFFSET;
 				offsets.put(temp);
 			}
 		}
-
 		offsets.flip();
 		sphere.setInstanceData(offsets);
-//
-		gl.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		gl.glEnable(GL30.GL_BLEND);
+		
+		gpu.texture.bind();
+		gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+		gl.glEnable(GL20.GL_BLEND);
 		shader.bind();
-		shader.setUniformMatrix("u_projTrans", camera.combined);
+		shader.setUniformMatrix("projTrans", camera.combined);
+		shader.setUniformf("offsetf", OFFSET);
+		shader.setUniformf("shift", SHIFT);
+		shader.setUniformf("size", SIZE);
 
+		gl.glEnable(GL20.GL_CULL_FACE);
+		gl.glDepthMask(false);
 		sphere.render(shader, GL20.GL_TRIANGLES);
+		gl.glDepthMask(true);
+		gl.glDisable(GL20.GL_CULL_FACE);
 
 		offsetX += 0.02f;
 		offsetY += 0.02f;
-		offsetTime += 0.02f;
-	}
-
-	@SuppressWarnings("unused")
-	private void reload() {
-		shader.dispose();
-		shader = new ShaderProgram(files.internal("Shaders/clouds.vert"), files.internal("Shaders/clouds.frag"));
-		shader.bind();
-		Gdx.gl.glUseProgram(0);
 	}
 
 	@Override
 	public void dispose() {
 		shader.dispose();
+		sphere.dispose();
+		gpu.dispose();
 	}
 }
