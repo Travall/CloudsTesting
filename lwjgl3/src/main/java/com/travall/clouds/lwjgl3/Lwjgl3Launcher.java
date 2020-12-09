@@ -15,11 +15,15 @@ public class Lwjgl3Launcher {
 	}
 
 	private static Lwjgl3ApplicationConfiguration getDefaultConfiguration() {
-		Lwjgl3ApplicationConfiguration configuration = new Lwjgl3ApplicationConfiguration();
-		configuration.setTitle("clouds");
-		configuration.useOpenGL3(true,3,3);
-		configuration.setWindowedMode(640, 480);
-		configuration.setWindowIcon("libgdx128.png", "libgdx64.png", "libgdx32.png", "libgdx16.png");
-		return configuration;
+		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
+		config.setTitle("clouds");
+		config.useOpenGL3(true, 3, 2);
+		config.setWindowedMode(800, 600);
+		config.setWindowIcon("libgdx128.png", "libgdx64.png", "libgdx32.png", "libgdx16.png");
+		
+		//config.useVsync(false); config.setForegroundFPS(1500);
+		//config.setFullscreenMode(Lwjgl3ApplicationConfiguration.getDisplayMode());
+		
+		return config;
 	}
 }

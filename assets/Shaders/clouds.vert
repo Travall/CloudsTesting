@@ -3,15 +3,30 @@
     precision highp float;
 #endif
 
-in vec4 a_position;
+in vec3 a_position;
 
-in vec2 i_offset;
-in float i_scale;
+in vec2 offset;
 
-uniform mat4 u_projTrans;
+uniform float offsetf;
+uniform float shift;
+uniform float size;
+
+uniform sampler2D noiseMap;
+uniform mat4 projTrans;
 
 void main() {
-    vec4 offsetPos = vec4(i_offset.x / 2.5, 0, i_offset.y / 2.5, 1.0);
-    vec4 newPos = vec4( a_position.x * i_scale, a_position.y * i_scale, a_position.z * i_scale, 1 ) + offsetPos;
-	gl_Position = u_projTrans * newPos;
+	float noise = texture(noiseMap, offset / 512.0 / offsetf).r;
+	
+	noise += shift;
+	
+	if (noise < 0.001) {
+		noise = noise > 0.01 ? 0.0 : noise;
+		
+		noise *= size;
+		
+		vec3 newPos = (a_position * noise) + vec3(offset.x, 0.0, offset.y);
+		gl_Position = projTrans * vec4(newPos, 1.0);
+	} else {
+		gl_Position = vec4(0.0);
+	}
 }
